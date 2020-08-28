@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 
 	mp "github.com/mackerelio/go-mackerel-plugin"
 	"github.com/xruins/mackerel-plugin-hddtemp/lib/smart"
@@ -20,7 +21,8 @@ func (htp *HDDTempPlugin) FetchMetrics() (map[string]float64, error) {
 	metrics := make(map[string]float64, len(result))
 
 	for k, v := range result {
-		metrics["temperature."+k] = v
+		key := fmt.Sprintf("%s.temperature", k)
+		metrics[key] = v
 	}
 
 	return metrics, nil
@@ -37,11 +39,11 @@ func (htp *HDDTempPlugin) MetricKeyPrefix() string {
 }
 
 var graphdef = map[string]mp.Graphs{
-	"temperature": {
+	"#": {
 		Label: "HDD Temperature",
 		Unit:  "float",
 		Metrics: []mp.Metrics{
-			{Name: "*", Label: "Temperature", Diff: false},
+			{Name: "temperature", Label: "Temperature", Diff: false},
 		},
 	},
 }
