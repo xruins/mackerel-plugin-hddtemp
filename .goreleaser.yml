@@ -7,6 +7,3 @@ builds:
 
 archives:
   - format: zip
-  - format: gz
-    files:
-      - none*
