@@ -32,7 +32,7 @@ type temperature struct {
 	Current float64 `json:"current"`
 }
 
-// smartctlResult is a struct to unmarshal JSON of smartctl output.
+// smartctlResult is the struct to unmarshal JSON of smartctl output.
 type smartctlResult struct {
 	Temperature temperature `json:"temperature"`
 }
@@ -46,13 +46,13 @@ func execSmartctl(devices []string) (map[string]float64, error) {
 
 	for _, dev := range devices {
 		eg.Go(func() error {
-			out, err := exec.Command("smartctl", "-a -j", dev).Output()
+			out, err := exec.Command("smartctl", "-a", "-j", dev).Output()
 			if err != nil {
-				return err
+				return xerrors.Errorf("failed to execute smartctl command : %w", err)
 			}
 
-			var result *smartctlResult
-			err = json.Unmarshal(out, result)
+			var result smartctlResult
+			err = json.Unmarshal(out, &result)
 			if err != nil {
 				return xerrors.Errorf("got malformed json : %w", err)
 			}
