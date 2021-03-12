@@ -1,20 +1,69 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
+	"os/exec"
 
 	mp "github.com/mackerelio/go-mackerel-plugin"
+	"github.com/xruins/mackerel-plugin-hddtemp/lib/hddtemp"
 	"github.com/xruins/mackerel-plugin-hddtemp/lib/smart"
 )
 
 type HDDTempPlugin struct {
 	prefix  string
 	devices []string
+	method  Method
+}
+
+type Method string
+
+const (
+	MethodAuto     = "auto"
+	MethodSmartctl = "smartctl"
+	MethodHDDTemp  = "hddtemp"
+)
+
+type fetcher interface {
+	Fetch([]string) (map[string]float64, error)
+}
+
+func isExecutable(cmd string) bool {
+	_, err := exec.LookPath(cmd)
+	return (err == nil)
 }
 
 func (htp *HDDTempPlugin) FetchMetrics() (map[string]float64, error) {
-	result, err := smart.Fetch(htp.devices)
+	var f fetcher
+
+	switch htp.method {
+	case MethodAuto:
+		if isExecutable(MethodSmartctl) {
+			f = &smart.SmartctlFetcher{}
+			break
+		} else if isExecutable(MethodHDDTemp) {
+			f = &hddtemp.HDDTempFetcher{}
+			break
+		}
+		return nil, errors.New("neither smartctl nor hddtemp executable")
+	case MethodSmartctl:
+		if isExecutable(MethodSmartctl) {
+			f = &smart.SmartctlFetcher{}
+			break
+		}
+		return nil, errors.New("could not find smartctl executable")
+	case MethodHDDTemp:
+		if isExecutable(MethodHDDTemp) {
+			f = &hddtemp.HDDTempFetcher{}
+			break
+		}
+		return nil, errors.New("could not find hddtemp executable")
+	default:
+		return nil, errors.New(`malformed method. choose one: "auto","smartctl","hddtemp".`)
+	}
+
+	result, err := f.Fetch(htp.devices)
 	if err != nil {
 		return nil, err
 	}
@@ -51,11 +100,13 @@ var graphdef = map[string]mp.Graphs{
 func main() {
 	optPrefix := flag.String("metric-key-prefix", "", "Metric key prefix")
 	optTempfile := flag.String("tempfile", "", "Temp file name")
+	optMethod := flag.String("method", "auto", `method to fetch HDD temperature. choose one: "auto","smartctl","hddtemp"`)
 	flag.Parse()
 
 	hddtemp := HDDTempPlugin{
 		prefix:  *optPrefix,
 		devices: flag.Args(),
+		method:  Method(*optMethod),
 	}
 
 	plugin := mp.NewMackerelPlugin(&hddtemp)

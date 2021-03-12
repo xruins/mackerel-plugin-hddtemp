@@ -1,8 +1,9 @@
-package smart
+package hddtemp
 
 import (
-	"encoding/json"
 	"os/exec"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -10,9 +11,9 @@ import (
 	"golang.org/x/xerrors"
 )
 
-type SmartctlFetcher struct{}
+type HDDTempFetcher struct{}
 
-func (s *SmartctlFetcher) Fetch(devices []string) (map[string]float64, error) {
+func (h *HDDTempFetcher) Fetch(devices []string) (map[string]float64, error) {
 	result, err := execSmartctl(devices)
 
 	if err != nil {
@@ -21,21 +22,19 @@ func (s *SmartctlFetcher) Fetch(devices []string) (map[string]float64, error) {
 
 	resultMap := make(map[string]float64, len(devices))
 	for dev, output := range result {
-		name := strings.TrimPrefix(dev, "/dev/")
+		name := removeLeadingDev(dev)
 		resultMap[name] = output
 	}
 
 	return resultMap, nil
 }
 
-type temperature struct {
-	Current float64 `json:"current"`
+// removeLeadingDev removes leading "/dev/" from path to block device path.
+func removeLeadingDev(s string) string {
+	return strings.TrimPrefix(s, "/dev/")
 }
 
-// smartctlResult is a struct to unmarshal JSON of smartctl output.
-type smartctlResult struct {
-	Temperature temperature `json:"temperature"`
-}
+var hddTempRegexp = regexp.MustCompile(`(\d+)°C$`)
 
 // execSmartctl returns the outputs of "smartctl" command for block devices.
 func execSmartctl(devices []string) (map[string]float64, error) {
@@ -46,19 +45,19 @@ func execSmartctl(devices []string) (map[string]float64, error) {
 
 	for _, dev := range devices {
 		eg.Go(func() error {
-			out, err := exec.Command("smartctl", "-a -j", dev).Output()
+			out, err := exec.Command("hddtemp", "-n", dev).Output()
 			if err != nil {
 				return err
 			}
 
-			var result *smartctlResult
-			err = json.Unmarshal(out, result)
+			s := strings.TrimSpace(string(out))
+			i, err := strconv.ParseInt(s, 10, 64)
 			if err != nil {
-				return xerrors.Errorf("got malformed json : %w", err)
+				return xerrors.Errorf("malformed temperature : %w", err)
 			}
 
 			mutex.Lock()
-			ret[dev] = result.Temperature.Current
+			ret[dev] = float64(i)
 			mutex.Unlock()
 
 			return nil
