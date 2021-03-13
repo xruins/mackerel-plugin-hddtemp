@@ -37,7 +37,7 @@ Usage of ./mackerel-plugin-hddtemp:
 
 #### method
 
-The option to specify method the to measure the temperature of disks.
+The option to specify the method to measure the temperature of disks.
 It is set to `auto` by default.
 
 `auto`: use either `smartctl` or `hddtemp`. if both command is available, use `smartctl`.
