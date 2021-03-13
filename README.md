@@ -25,6 +25,18 @@ execute `go get github.com/xruins/mackerel-plugin-hddtemp`, then `mackerel-plugi
 
 ### Command reference
 
+Typically, execute command with devices to measure the temperature.
+
+`mackerel-plugin-hddtemp /dev/sda /dev/sdb`
+
+This command will output result as follows.
+
+``` 
+$ mackerel-plugin-hddtemp /dev/sda /dev/sdb
+hddtemp.sdb.temperature 30      1615617068
+hddtemp.sda.temperature 31      1615617068
+```
+
 ```
 Usage of ./mackerel-plugin-hddtemp:
   -method string
