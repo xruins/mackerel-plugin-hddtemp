@@ -1,7 +1,5 @@
 # mackerel-plugin-hddtemp
 
-## Default
-
 A mackerel plugin to post temperature of disks as host metrics.
 
 ## Prerequisties
